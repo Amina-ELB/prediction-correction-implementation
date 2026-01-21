@@ -1,0 +1,7 @@
+# Dependencies are best installed via Conda (see README.md)
+# numpy
+# mpi4py
+# petsc4py
+# fenics-dolfinx
+# fenics-ufl
+# cutfemx (See README for installation)
