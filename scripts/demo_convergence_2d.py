@@ -50,15 +50,12 @@ except ModuleNotFoundError:
     print("pyvista is required for this demo")
     exit(0)
 
-
 # Define the function
 def circle(x):
     return (x[0] - 0.5) * (x[0] - 0.5) + (x[1] - 0.5) * (x[1] - 0.5) - 0.25 * 0.25  + 1e-16
 
-
-def exact_solution(x):
+def circle_exact_solution(x):
     return np.sqrt((x[0] - 0.5) ** 2 + (x[1] - 0.5) ** 2) - 0.25 + 1e-16
-
 
 # Define the function to compute the sign of the level set function
 # This function returns -1 for negative values, 1 for positive values, and 0 for zero
@@ -246,10 +243,12 @@ def solve_problem(N, geometry_type="annulus"):
     level_set.interpolate(circle)
 
     ls_ex = fem.Function(V_ls)
-    ls_ex.interpolate(exact_solution)
+    ls_ex.interpolate(circle_exact_solution)
 
-    sign = fem.Function(V_ls)
-    sign.x.array[:] = sgn(level_set.x.array)
+    # sign = fem.Function(V_ls)
+    # sign.x.array[:] = sgn(level_set.x.array)
+    eps = 1e-6
+    sign = level_set / (ufl.sqrt(level_set**2+eps**2))
 
     dim = msh.topology.dim
 
@@ -485,7 +484,7 @@ def solve_problem(N, geometry_type="annulus"):
     # Error computation
     V3 = fem.functionspace(msh, ("Lagrange", 3))
     ls_ex_3 = fem.Function(V3)
-    ls_ex_3.interpolate(exact_solution)
+    ls_ex_3.interpolate(circle_exact_solution)
 
     ls_3 = fem.Function(V3)
     ls_3.interpolate(uh_corrector)

@@ -4,16 +4,32 @@ This repository contains an implementation of reinitialization methods for the L
 
 ## Project Structure
 
+- `main.py`: Main entry point for the reinitialization process.
+- `data.py`: Configuration file for simulation parameters.
 - `src/`: Contains the main source code (library).
     - `reinitialization.py`: Main class for reinitialization.
     - `reinitialization_mpi.py`: MPI-compatible version.
     - `mesh_generation.py`: Mesh generation utilities.
+    - `geometry_ls.py`: Geometry definitions and noise application.
     - `compute_error.py`: Error computation functions.
 - `scripts/`: Execution and demonstration scripts.
     - `demo_convergence_2d.py`: Convergence study on a 2D case (circle).
     - `demo_3d.py`: 3D demonstration (torus/sphere).
     - `demo_mpi.py`: Demonstration using MPI.
 - `requirements.txt`: List of Python dependencies.
+
+## Quick Start
+
+To run the standard reinitialization process:
+
+1.  Configure your simulation parameters in `data.py` (mesh size, level set function, noise, etc.).
+2.  Run the main script:
+
+```bash
+python3 main.py
+```
+
+Results will be saved in the `res/` directory.
 
 ## Installation
 

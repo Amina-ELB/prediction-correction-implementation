@@ -19,7 +19,7 @@ def circle_3D(x):
     # Center at (2.5, 2.5, 1)
     return -1 * (((x[0] - 2.5)**2 + (x[1] - 2.5)**2 + (x[2] - 1)**2) - r**2)
 
-def doughnut(x):
+def torus(x):
     r = 0.55
     R = 1.8
     # Torus equation: (R - sqrt(x^2 + y^2))^2 + z^2 - r^2
@@ -29,11 +29,6 @@ def circle_2D(x):
     r = 0.55
     return -1 * (((x[0] - 2.5)**2 + (x[1] - 2.5)**2) - r**2)
     
-def star(x):
-    c = [0.5, 0.5]
-    n = 8.
-    eps = 1e-9
-    return 0.5 * (ufl.sqrt((x[0] - c[0])**2 + (x[1] - c[1])**2) - 0.1 * ufl.cos(n * ufl.atan((x[1] - c[1]) / ((x[0] - c[0]) + ufl.sign(x[0] - c[0] + eps) * eps)) + 2.) - 0.25)
 
 def main():
     # MPI setup
@@ -56,11 +51,11 @@ def main():
 
     # Initialize level set function
     ls_func = fem.Function(V_ls)
-    ls_func.interpolate(doughnut)
+    ls_func.interpolate(torus)
     ls_func.name = "ls_func"
 
     ls_func_init = fem.Function(V_ls)
-    ls_func_init.interpolate(doughnut)
+    ls_func_init.interpolate(torus)
 
     # Initialize solver
     reinit_solver = Reinitialization(level_set=ls_func, V_ls=V_ls, l=3)
@@ -151,7 +146,7 @@ def main():
         time += 1
         
         if rank == 0:
-            print("Iteration", num_step)
+            print("Iteration ", num_step)
             
         if compute_error:
             val_error_L2_distance_norm = error_L2_distance_func_form(ls_func, Q)
