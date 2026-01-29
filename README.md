@@ -77,6 +77,6 @@ Amina El Bachari
 If you use this code in your research, please cite the following paper:
 
 > **A predictor-corrector scheme for approximating signed distances using finite element methods**
-> Amina El Bachari, Susanne Claus, Johann Rannou, Vladislav Yastrebov, Pierre Kerfriden
+> Amina El Bachari, Johann Rannou, Vladislav Yastrebov, Pierre Kerfriden, Susanne Claus
 > *Preprint*, 2025
 > [Read the paper](https://www.researchgate.net/publication/392941004_A_predictor-corrector_scheme_for_approximating_signed_distances_using_finite_element_methods)
