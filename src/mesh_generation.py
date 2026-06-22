@@ -18,7 +18,7 @@ def create_mesh_3D(Lx, Ly, Lz, nx, ny, nz):
     """
     msh = mesh.create_box(
         MPI.COMM_WORLD,
-        [np.array([0.0, 0.0, 0.0]), np.array([Lx, Ly, Lz])],
+        [np.array([-Lx/2, -Ly/2, -Lz/2]), np.array([Lx/2, Ly/2, Lz/2])],
         [nx, ny, nz],
         cell_type=mesh.CellType.tetrahedron,
         ghost_mode=GhostMode.shared_facet

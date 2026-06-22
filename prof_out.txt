@@ -1,0 +1,40 @@
+Sun May 31 17:03:24 2026    stats.prof
+
+         49178 function calls (46886 primitive calls) in 9.790 seconds
+
+   Ordered by: cumulative time
+   List reduced from 744 to 30 due to restriction <30>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      2/1    0.000    0.000    9.790    9.790 {built-in method builtins.exec}
+        1    0.000    0.000    9.790    9.790 <string>:1(<module>)
+        1    0.000    0.000    9.789    9.789 /home/amina/Documents/prediction-correction-implementation/benchmark_local.py:15(run_benchmark)
+        8    0.000    0.000    9.560    1.195 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/jit.py:58(mpi_jit)
+        8    0.000    0.000    9.560    1.195 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/jit.py:158(ffcx_jit)
+        8    0.000    0.000    8.820    1.103 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/ffcx/codegeneration/jit.py:93(get_cached_module)
+       10    0.096    0.010    8.818    0.882 <frozen importlib._bootstrap_external>:1597(find_spec)
+        8    2.483    0.310    8.722    1.090 <frozen importlib._bootstrap_external>:1648(_fill_cache)
+        7    0.562    0.080    7.633    1.090 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/ffcx/codegeneration/jit.py:159(compile_forms)
+        8    6.239    0.780    6.239    0.780 {built-in method posix.listdir}
+        3    0.000    0.000    5.734    1.911 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/fem/forms.py:201(form)
+        3    0.000    0.000    5.734    1.911 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/fem/forms.py:317(_create_form)
+        3    0.000    0.000    5.734    1.911 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/fem/forms.py:241(_form)
+        1    0.000    0.000    3.858    3.858 /home/amina/Documents/prediction-correction-implementation/src/reinitialization.py:278(__init__)
+        1    0.000    0.000    1.926    1.926 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/fem/function.py:89(__init__)
+        1    0.164    0.164    1.925    1.925 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/ffcx/codegeneration/jit.py:238(compile_expressions)
+        4    0.000    0.000    1.903    0.476 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/cutfemx/fem.py:180(cut_form)
+        4    0.000    0.000    1.903    0.476 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/cutfemx/fem.py:329(_create_cut_form)
+        4    0.001    0.000    1.903    0.476 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/cutfemx/fem.py:194(_cut_form)
+        4    0.135    0.034    0.135    0.034 {method 'solve' of 'petsc4py.PETSc.KSP' objects}
+        3    0.000    0.000    0.117    0.039 /home/amina/Documents/prediction-correction-implementation/src/reinitialization.py:450(corrector)
+        1    0.000    0.000    0.048    0.048 /home/amina/Documents/prediction-correction-implementation/src/reinitialization.py:412(predictor)
+       14    0.000    0.000    0.036    0.003 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/functools.py:904(wrapper)
+        6    0.012    0.002    0.028    0.005 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/cutfemx/petsc.py:53(assemble_matrix)
+        1    0.000    0.000    0.023    0.023 /home/amina/Documents/prediction-correction-implementation/src/mesh_generation.py:29(create_mesh_2D)
+        1    0.014    0.014    0.019    0.019 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/dolfinx/mesh.py:831(create_rectangle)
+        6    0.015    0.003    0.015    0.003 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/cutfemx/petsc.py:62(assemble_matrix_mat)
+       16    0.000    0.000    0.009    0.001 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/ffcx/naming.py:20(compute_signature)
+       14    0.000    0.000    0.007    0.000 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/ufl/form.py:415(signature)
+        7    0.000    0.000    0.007    0.001 /home/amina/miniforge3/envs/fenicsxv0.9/lib/python3.12/site-packages/ufl/form.py:667(_compute_signature)
+
+

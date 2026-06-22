@@ -31,7 +31,7 @@ from petsc4py.PETSc import ScalarType
 from ufl import ( dx, inner)
 
 
-from src.reinitialization_mpi import reinitialization
+from src.reinitialization import Reinitialization
 from src.mesh_generation import create_mesh_3D, create_mesh_2D
 from src.compute_error import error_L2_distance_func_form
 

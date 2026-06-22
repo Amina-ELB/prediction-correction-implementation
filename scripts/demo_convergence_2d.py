@@ -127,10 +127,15 @@ def interface_error(phi_reinit, phi_initial, mesh, dim, xsi=1):
     return err_val
 
 def error_L2_distance_func_form(phi, V_ls, xsi=1):
+    mesh = V_ls.mesh
     euclidean_norm = ufl.sqrt(inner(ufl.grad(phi), ufl.grad(phi)))
     nabla_error = fem.form(((xsi * (euclidean_norm - 1)) ** 2) * ufl.dx)
     nabla_error_exp = fem.assemble_scalar(nabla_error)
-    return nabla_error_exp**0.5
+    
+    vol_form = fem.form(fem.Constant(mesh, 1.0) * ufl.dx)
+    volume = fem.assemble_scalar(vol_form)
+    
+    return (nabla_error_exp / volume)**0.5
 
 import gmsh
 from dolfinx.io import gmshio
@@ -492,17 +497,20 @@ def solve_problem(N, geometry_type="annulus"):
     e_W = fem.Function(V3)
     e_W.x.array[:] = ls_3.x.array - ls_ex_3.x.array
 
+    vol_form = fem.form(fem.Constant(msh, 1.0) * ufl.dx)
+    volume = msh.comm.allreduce(assemble_scalar(vol_form), op=MPI.SUM)
+
     # L2 Error
     error_L2 = fem.form(ufl.inner(e_W, e_W) * ufl.dx)
     error_L2_local = assemble_scalar(error_L2)
     error_L2_global = msh.comm.allreduce(error_L2_local, op=MPI.SUM)
-    l2_norm = np.sqrt(error_L2_global)
+    l2_norm = np.sqrt(error_L2_global / volume)
 
     # H1 Error
     error_H1 = fem.form(ufl.inner(grad(e_W), grad(e_W)) * ufl.dx)
     error_H1_local = assemble_scalar(error_H1)
     error_H1_global = msh.comm.allreduce(error_H1_local, op=MPI.SUM)
-    h1_norm = np.sqrt(error_H1_global)
+    h1_norm = np.sqrt(error_H1_global / volume)
 
     # Interface Error (L2 on Gamma)
     interface_norm = interface_error(uh_corrector, ls_ex, msh, msh.topology.dim)
