@@ -54,7 +54,7 @@ def main():
     phi_init.interpolate(circle_trans)
     
     # 3. Initialize Solvers
-    advection_solver = AdvectionSolver(V, velocity, dt)
+    advection_solver = AdvectionSolver(V, u_velocity=velocity, dt=dt, method="supg")
     reinit_solver = Reinitialization(phi, V, l=data.l_param)
     
     # 4. Results Directory

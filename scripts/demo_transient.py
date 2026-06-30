@@ -5,13 +5,12 @@ from mpi4py import MPI
 from dolfinx import fem
 from dolfinx.io import XDMFFile
 import ufl
-import os
-
+import sys
 # Add the parent directory to sys.path to allow importing from src
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-from src.mesh_generation import create_mesh_2D
+from src.mesh_generation import create_mesh_2D, create_unstructured_mesh_2D
 from src.reinitialization import Reinitialization
 from src.advection import AdvectionSolver
 import data
@@ -31,7 +30,10 @@ def main():
     T = 0.5
     num_steps = int(T / dt)
     # 1. Create Mesh
-    mesh = create_mesh_2D(data.Lx, data.Ly, data.N, data.N)
+    if getattr(data, "mesh_type", "structured") == "unstructured":
+        mesh = create_unstructured_mesh_2D(data.Lx, data.Ly, data.Lx/data.N)
+    else:
+        mesh = create_mesh_2D(data.Lx, data.Ly, data.N, data.N)
     
     if mesh.comm.rank == 0:
         print(f"CFL adaptation: h={h_min:.4f}, u_max={u_max:.4f} => dt={dt:.4f} ({num_steps} steps)")
@@ -51,7 +53,7 @@ def main():
         return ((x[0] - (0.5 + v_x * t))**2 + (x[1] - (0.5 + v_y * t))**2)**0.5 - 0.25 + 1e-16
     
     # 3. Initialize Solvers
-    advection_solver = AdvectionSolver(V, velocity, dt)
+    advection_solver = AdvectionSolver(V, u_velocity=velocity, dt=dt, method="supg")
     reinit_solver = Reinitialization(phi, V, l=data.l_param)
     
     # 4. Results Directory

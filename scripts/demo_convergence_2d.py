@@ -221,7 +221,7 @@ def create_square_mesh(N):
     return msh, facet_markers
 
 
-def solve_problem(N, geometry_type="annulus"):
+def solve_problem(N, geometry_type="annulus", projection=False):
     if geometry_type == "annulus":
         msh, facet_markers = create_annulus_mesh(N)
     elif geometry_type == "square":
@@ -261,10 +261,49 @@ def solve_problem(N, geometry_type="annulus"):
     inside_entities = locate_entities(level_set, dim, "phi<0")
     outside_entities = locate_entities(level_set, dim, "phi>0")
 
-    V_DG = fem.functionspace(msh, ("DG", 0, (msh.geometry.dim,)))
-    n_K = fem.Function(V_DG)
-    compute_normal(n_K, level_set, intersected_entities)
-    # n_K = fem.Constant(msh, (PETSc.ScalarType(1.0),PETSc.ScalarType(0.0)))
+    if projection:
+        print("\033[91mprojection\033[0m")
+        V_vec = fem.functionspace(msh, ("CG", 1, (msh.geometry.dim,)))
+        grad_projected = fem.Function(V_vec)
+        
+        u_v = ufl.TrialFunction(V_vec)
+        v_v = ufl.TestFunction(V_vec)
+        a_proj = ufl.inner(u_v, v_v) * ufl.dx
+        L_proj = ufl.inner(ufl.grad(level_set), v_v) * ufl.dx
+        
+        a_proj_form = fem.form(a_proj)
+        L_proj_form = fem.form(L_proj)
+        A_proj = dolfinx.fem.petsc.create_matrix(a_proj_form)
+        dolfinx.fem.petsc.assemble_matrix(A_proj, a_proj_form)
+        A_proj.assemble()
+        
+        solver_proj = PETSc.KSP().create(msh.comm)
+        solver_proj.setType(PETSc.KSP.Type.CG) 
+        solver_proj.getPC().setType(PETSc.PC.Type.JACOBI)
+        solver_proj.setOperators(A_proj)
+        b_proj = dolfinx.fem.petsc.create_vector(L_proj_form)
+        
+        def update_projected_gradient():
+            with b_proj.localForm() as loc_b:
+                loc_b.set(0)
+            dolfinx.fem.petsc.assemble_vector(b_proj, L_proj_form)
+            b_proj.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
+            solver_proj.solve(b_proj, grad_projected.x.petsc_vec)
+            grad_projected.x.scatter_forward()
+            
+        update_projected_gradient()
+        
+        eps_proj = 1e-12
+        euclidean_norm_proj = ufl.sqrt(ufl.inner(grad_projected, grad_projected) + eps_proj)
+        n_K = grad_projected / euclidean_norm_proj
+    else:
+        print("no projection")
+        V_DG = fem.functionspace(msh, ("DG", 0, (msh.geometry.dim,)))
+        n_K = fem.Function(V_DG)
+        compute_normal(n_K, level_set, intersected_entities)
+        
+        def update_projected_gradient():
+            pass
 
     DG0 = fem.functionspace(msh, ("DG", 0))
     norm_grad_phi_expr = fem.Expression(norm(grad(level_set)), DG0.element.interpolation_points())
@@ -456,6 +495,9 @@ def solve_problem(N, geometry_type="annulus"):
         level_set.x.array[:] = uh_prev.x.array[:]
         norm_grad_phi_func.interpolate(norm_grad_phi_expr)
         classic_func.x.array[:] = classic(norm_grad_phi_func.x.array)
+        
+        if projection:
+            update_projected_gradient()
 
         b_corrector = assemble_vector(L1_cut)
         b_corrector.ghostUpdate(addv=PETSc.InsertMode.ADD, mode=PETSc.ScatterMode.REVERSE)
@@ -530,92 +572,132 @@ def solve_problem(N, geometry_type="annulus"):
 
 
 if __name__ == "__main__":
-    # Geometry selection
+    import data
+    import os
+    
+    # --- OPTIMISATION DU MODE D'EXÉCUTION ---
+    # Mettre True pour faire la comparaison complète (Avec ET Sans Projection)
+    # Mettre False pour lancer uniquement le mode choisi dans data.py
+    compare_mode = True 
+    
     geometry_type = "annulus"
     # geometry_type = "square"
 
     # Start with N=16 and increase by factor of 1.5
-    # 16, 24, 36, 54, 81, 121
-    N_values = [40,60,80,120,160,240,360]
-    results = []
-
-    output_file = "convergence_results.txt"
+    N_values = [40, 60, 80, 120, 160, 240, 360]
     
-    with open(output_file, "w") as f:
-        header = f"{'N':<5} {'h':<10} {'L2 Error':<15} {'Rate':<10} {'H1 Error':<15} {'Rate':<10} {'Int. Error':<15} {'Rate':<10} {'Eik. Error':<15} {'Rate':<10}"
-        print(header)
-        f.write(header + "\n")
+    results_all = {}
+    
+    if compare_mode:
+        configs = [
+            (False, "res_no_projection"),
+            (True, "res_with_projection")
+        ]
+    else:
+        proj_flag = getattr(data, "projection", False)
+        folder = "res_with_projection" if proj_flag else "res_no_projection"
+        configs = [(proj_flag, folder)]
+    
+    for proj_flag, folder in configs:
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+            
+        output_file = f"{folder}/convergence_results.txt"
         
-        separator = "-" * 130
-        print(separator)
-        f.write(separator + "\n")
-
-        prev_h = None
-        prev_l2 = None
-        prev_h1 = None
-        prev_int = None
-        prev_eik = None
-
-        h_values = []
-        l2_errors = []
-        h1_errors = []
-        int_errors = []
-        eik_errors = []
-
-        for N in N_values:
-            h, l2, h1, int_err, eik_err = solve_problem(N, geometry_type=geometry_type)
-            if h is None:
-                continue
-
-            h_values.append(h)
-            l2_errors.append(l2)
-            h1_errors.append(h1)
-            int_errors.append(int_err)
-            eik_errors.append(eik_err)
-
-            rate_l2 = 0.0
-            rate_h1 = 0.0
-            rate_int = 0.0
-            rate_eik = 0.0
-
-            if prev_h is not None:
-                rate_l2 = np.log(l2 / prev_l2) / np.log(h / prev_h)
-                rate_h1 = np.log(h1 / prev_h1) / np.log(h / prev_h)
-                rate_int = np.log(int_err / prev_int) / np.log(h / prev_h)
-                rate_eik = np.log(eik_err / prev_eik) / np.log(h / prev_h)
-
-            row = f"{N:<5} {h:<10.4f} {l2:<15.4e} {rate_l2:<10.2f} {h1:<15.4e} {rate_h1:<10.2f} {int_err:<15.4e} {rate_int:<10.2f} {eik_err:<15.4e} {rate_eik:<10.2f}"
-            print(row)
-            f.write(row + "\n")
-
-            prev_h = h
-            prev_l2 = l2
-            prev_h1 = h1
-            prev_int = int_err
-            prev_eik = eik_err
-
-    # Plotting
-    plt.figure(figsize=(10, 10))
+        with open(output_file, "w") as f:
+            header = f"{'N':<5} {'h':<10} {'L2 Error':<15} {'Rate':<10} {'H1 Error':<15} {'Rate':<10} {'Int. Error':<15} {'Rate':<10} {'Eik. Error':<15} {'Rate':<10}"
+            print(f"\n--- Running with projection={proj_flag} ---")
+            print(header)
+            f.write(header + "\n")
+            
+            separator = "-" * 130
+            print(separator)
+            f.write(separator + "\n")
+            
+            prev_h = None
+            prev_l2, prev_h1, prev_int, prev_eik = None, None, None, None
+            
+            h_values, l2_errors, h1_errors, int_errors, eik_errors = [], [], [], [], []
+            
+            for N in N_values:
+                h, l2, h1, int_err, eik_err = solve_problem(N, geometry_type=geometry_type, projection=proj_flag)
+                if h is None:
+                    continue
+                    
+                h_values.append(h)
+                l2_errors.append(l2)
+                h1_errors.append(h1)
+                int_errors.append(int_err)
+                eik_errors.append(eik_err)
+                
+                rate_l2, rate_h1, rate_int, rate_eik = 0.0, 0.0, 0.0, 0.0
+                
+                if prev_h is not None:
+                    rate_l2 = np.log(l2 / prev_l2) / np.log(h / prev_h)
+                    rate_h1 = np.log(h1 / prev_h1) / np.log(h / prev_h)
+                    rate_int = np.log(int_err / prev_int) / np.log(h / prev_h)
+                    rate_eik = np.log(eik_err / prev_eik) / np.log(h / prev_h)
+                    
+                row = f"{N:<5} {h:<10.4f} {l2:<15.4e} {rate_l2:<10.2f} {h1:<15.4e} {rate_h1:<10.2f} {int_err:<15.4e} {rate_int:<10.2f} {eik_err:<15.4e} {rate_eik:<10.2f}"
+                print(row)
+                f.write(row + "\n")
+                
+                prev_h = h
+                prev_l2 = l2
+                prev_h1 = h1
+                prev_int = int_err
+                prev_eik = eik_err
+                
+        results_all[proj_flag] = {
+            "h": h_values, "l2": l2_errors, "h1": h1_errors, "int": int_errors, "eik": eik_errors
+        }
+        
+    # Plotting all errors on the same graph
+    plt.figure(figsize=(12, 10))
     
-    # Plot errors
-    plt.plot(h_values, l2_errors, 'k--o', label=r'$\left\Vert u - u_{ex} \right\Vert_{L^{2}}$')
-    plt.plot(h_values, h1_errors, 'k--s', label=r'$\left\Vert \nabla(u - u_{ex}) \right\Vert_{L^{2}}$')
-    plt.plot(h_values, int_errors, 'k--^', label=r'$\left\Vert u - u_{ex} \right\Vert_{L^{2}(\Gamma)}$')
-    plt.plot(h_values, eik_errors, 'k--d', label=r'$\left\Vert |\nabla u| - 1 \right\Vert_{L^{2}}$')
-
-    # Reference lines
-    h_arr = np.array(h_values)
-    # O(h^2)
-    plt.plot(h_arr, h_arr**2 * (l2_errors[0] / h_arr[0] ** 2), "k-", label="Order 2")
-    # O(h)
-    plt.plot(h_arr, h_arr * (h1_errors[0] / h_arr[0]), "k-.", label="Order 1")
+    # Styles for different errors: (metric_key, label_math, marker)
+    styles = [
+        ("l2", r'$\left\Vert u - u_{ex} \right\Vert_{L^{2}}$', 'o'),
+        ("h1", r'$\left\Vert \nabla(u - u_{ex}) \right\Vert_{L^{2}}$', 's'),
+        ("int", r'$\left\Vert u - u_{ex} \right\Vert_{L^{2}(\Gamma)}$', '^'),
+        ("eik", r'$\left\Vert |\nabla u| - 1 \right\Vert_{L^{2}}$', 'd')
+    ]
+    
+    print("\nGenerating combined plot...")
+    
+    ref_order_2_added = False
+    ref_order_1_added = False
+    
+    for metric_key, math_label, marker in styles:
+        h_arr_f = np.array(results_all[False]["h"])
+        if len(h_arr_f) > 0:
+            plt.plot(h_arr_f, results_all[False][metric_key], color='blue', linestyle='-', marker=marker, 
+                     label=f"{math_label} (No Proj)")
+                     
+        h_arr_t = np.array(results_all[True]["h"])
+        if len(h_arr_t) > 0:
+            plt.plot(h_arr_t, results_all[True][metric_key], color='red', linestyle='--', marker=marker, 
+                     label=f"{math_label} (With Proj)")
+                     
+        # Reference lines based on the first metric's h values
+        if len(h_arr_f) > 0:
+            if metric_key in ["l2", "int"] and not ref_order_2_added:
+                plt.plot(h_arr_f, h_arr_f**2 * (results_all[False][metric_key][0] / h_arr_f[0]**2), 'k-', linewidth=2, label="Order 2")
+                ref_order_2_added = True
+            elif metric_key in ["h1", "eik"] and not ref_order_1_added:
+                plt.plot(h_arr_f, h_arr_f * (results_all[False][metric_key][0] / h_arr_f[0]), 'k--', linewidth=2, label="Order 1")
+                ref_order_1_added = True
 
     plt.yscale('log')
     plt.xscale('log')
     plt.xlabel('h', fontsize=14)
     plt.ylabel('Error', fontsize=14)
     plt.title(f"Convergence Study: Circle Redistance ({geometry_type})", fontsize=16)
-    plt.legend(fontsize=14, loc='lower right')
+    
+    # 2 columns legend so it doesn't take too much vertical space
+    plt.legend(fontsize=12, loc='best', ncol=2)
     plt.grid(True, which="both", ls="-")
-    plt.savefig("convergence_plot.pdf")
-    print("Plot saved to convergence_plot.pdf")
+    plt.tight_layout()
+    plt.savefig("convergence_plot_combined.pdf")
+    plt.close()
+    print("Plot saved to convergence_plot_combined.pdf")
